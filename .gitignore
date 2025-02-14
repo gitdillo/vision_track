@@ -5,3 +5,6 @@ __pycache__/
 
 # Ignore virtual environment
 training_env/
+
+# Ignore MLflow Tracking data log directory 
+mlruns/
