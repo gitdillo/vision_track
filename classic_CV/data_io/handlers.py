@@ -6,7 +6,8 @@ import time
 import numpy as np
 # from datetime import datetime
 # from .data_format import DataFormat
-from data_io.data_format import DataFormat
+# from data_io.data_format import DataFormat
+from classic_CV.data_io.data_format import DataFormat
 
 class InputHandler:
     def __init__(self, source):
