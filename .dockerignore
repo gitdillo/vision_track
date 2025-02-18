@@ -1,0 +1,7 @@
+ML_training/datasets/
+ML_training/logs/
+ML_training/models/
+__pycache__/
+*.pyc
+*.pyo
+*.swp

@@ -1,0 +1,30 @@
+# Use NVIDIA's PyTorch Docker image with CUDA support
+FROM pytorch/pytorch:latest
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install system-level dependencies for OpenCV and other tools
+RUN apt-get update && apt-get install -y \
+    python3-opencv \
+    git \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    opencv-python-headless \
+    matplotlib \
+    numpy \
+    scikit-learn \
+    pandas \
+    mlflow
+
+# Set up working directory inside the container
+WORKDIR /workspace
+
+# Copy the entire project into the container (optional)
+# COPY . /workspace
+# Alternatively, mount your project directory as a volume:
+# docker run --gpus all -it -v $(pwd):/workspace vision_track_container
+
+# Default command (can be overridden)
+CMD ["bash"]
