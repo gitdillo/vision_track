@@ -19,7 +19,11 @@ RUN pip install --no-cache-dir \
     mlflow
 
 # Set up working directory inside the container
-WORKDIR /workspace
+WORKDIR /vision_track
+
+# Set environment variables to properly handle imports
+ENV PYTHONPATH="/vision_track:${PYTHONPATH}"
+ENV VISION_TRACK_ROOT="/vision_track"
 
 # Copy the entire project into the container (optional)
 # COPY . /workspace

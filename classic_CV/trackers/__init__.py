@@ -7,7 +7,7 @@ for filename in os.listdir(os.path.dirname(__file__)):
     if filename.endswith(".py") and filename != "__init__.py":
         module_name = filename[:-3]  # Remove .py extension
         tracker_modules[module_name] = importlib.import_module(
-            f".{module_name}", package="trackers"
+            f"classic_CV.trackers.{module_name}", package="vision_track"
         )
 
 

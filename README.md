@@ -18,10 +18,10 @@ sudo apt-get install docker.io docker-buildx-plugin
 In the the root directory of the project there should be a file named `Dockerfile`. From this directory, build the container with:
 `docker build -t vision_track_container .`
 
-It might be necessary to configure Docker to use the NVidia runtime, in which case issue the following:
+NOTE: It might be necessary to configure Docker to use the NVidia runtime, in which case issue the following:
 `sudo nvidia-ctk runtime configure --runtime=docker`
 `sudo systemctl restart docker`
 
 
 Run the container with:
-`docker run --gpus all -it -v $(pwd):/workspace vision_track_container`
+`docker run --gpus all -it -v $(pwd):/vision_track vision_track_container`
