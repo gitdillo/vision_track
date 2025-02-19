@@ -19,21 +19,11 @@ In the the root directory of the project there should be a file named `Dockerfil
 
 `docker build -t vision_track_container .`
 
-<<<<<<< HEAD
 NOTE: It might be necessary to configure Docker to use the NVidia runtime, in which case issue the following:
-=======
-It might be necessary to configure Docker to use the NVidia runtime, in which case issue the following:
-
->>>>>>> 6439a2b96d2bbdcc334427790309a4da0bec244a
 `sudo nvidia-ctk runtime configure --runtime=docker`
 
 `sudo systemctl restart docker`
 
 
 Run the container with:
-<<<<<<< HEAD
 `docker run --gpus all -it -v $(pwd):/vision_track vision_track_container`
-=======
-
-`docker run --gpus all -it -v $(pwd):/workspace vision_track_container`
->>>>>>> 6439a2b96d2bbdcc334427790309a4da0bec244a
