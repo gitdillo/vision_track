@@ -17,6 +17,16 @@ TL:DR, run the following:
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list`
 
+
+NOTE: If the above command fails as an one liner, break it up as follows:
+1. Dump the GPG key into a file: `curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey -o nvidia-container-toolkit-keyring.gpg`
+2. Dearmor the GPG key: `sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg nvidia-container-toolkit-keyring.gpg`
+3. Configure the repository: `curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list`
+
+Then install the NVidia container Toolkit.
+
 `sudo apt-get update`
 
 `sudo apt-get install -y nvidia-container-toolkit`
@@ -24,7 +34,7 @@ TL:DR, run the following:
 
 Install docker:
 
-`sudo apt-get install docker.io docker-buildx`
+`sudo apt install docker.io docker-buildx`
 
 Add user to the docker group:
 
