@@ -53,6 +53,10 @@ NOTE: It might be necessary to configure Docker to use the NVidia runtime, in wh
 `sudo systemctl restart docker`
 
 
-From the project root directory (vision_track/), run the container with:
+From the project root directory (vision_track/), it is possible to run the container with or without a GUI:
 
-`docker run --gpus all -it -v $(pwd):/vision_track -w /vision_track --device-cgroup-rule='c 81:* rmw'  -v /dev:/dev vision_track_container`
+1. In the case of `classic_CV`, the GUI is needed to display the various camera windows. In this case, run the container with:
+`docker run --gpus all -it -v $(pwd):/vision_track -w /vision_track --device-cgroup-rule='c 81:* rmw'  -v /dev:/dev -p 5900:5900 vision_track_container` and then use a VNC client to connect to localhost:5900 (tested with tigerVNC viewer).
+
+2. In the case `ML_training`, using a GUI simply wastes resources. Simply run the container with `docker run --gpus all -it -v $(pwd):/vision_track -w /vision_track --device-cgroup-rule='c 81:* rmw' -v /dev:/dev vision_track_container  bash`. If you need to run a specific command or script instead of getting a bash shell, simply replace `bash` at the end with your desired command.
+

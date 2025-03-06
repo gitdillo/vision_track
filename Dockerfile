@@ -33,3 +33,12 @@ ENV VISION_TRACK_ROOT="/vision_track"
 
 # Default command (can be overridden)
 CMD ["bash"]
+
+# Install X11 and VNC server
+RUN apt-get update && apt-get install -y x11vnc xvfb
+
+# Set up a virtual display
+ENV DISPLAY :0
+
+# Start VNC server
+CMD ["x11vnc", "-create", "-forever"]
