@@ -1,6 +1,8 @@
-# data_format.py
+# File: vision_track/lib/data_io/data_format.py
 from datetime import datetime
 import struct
+import zipfile
+import json
 
 
 class DataFormat:
@@ -39,3 +41,49 @@ class DataFormat:
 
 All numeric values are little-endian. Video frame size and FPS are stored in metadata.
 """
+
+
+class DatasetValidator:
+    def __init__(self, dataset_path):
+        self.dataset_path = dataset_path
+
+    def validate_zip_structure(self):
+        required_files = [
+            DataFormat.RAW_VIDEO,
+            DataFormat.ANNOTATED_VIDEO,
+            DataFormat.ANNOTATIONS_BIN,
+            DataFormat.METADATA_JSON,
+            DataFormat.ROI_FRAME,
+            DataFormat.README
+        ]
+        
+        with zipfile.ZipFile(self.dataset_path, 'r') as zip_ref:
+            return all(file in zip_ref.namelist() for file in required_files)
+
+    def validate_metadata(self):
+        with zipfile.ZipFile(self.dataset_path, 'r') as zip_ref:
+            with zip_ref.open(DataFormat.METADATA_JSON) as f:
+                metadata = json.load(f)
+                return set(metadata.keys()) == set(DataFormat.METADATA_KEYS)
+
+    def validate_annotations(self):
+        with zipfile.ZipFile(self.dataset_path, 'r') as zip_ref:
+            with zip_ref.open(DataFormat.ANNOTATIONS_BIN) as f:
+                annotations_data = f.read()  # Read the entire file
+                offset = 0
+                while offset < len(annotations_data):
+                    # Read header
+                    if len(annotations_data) - offset < DataFormat.ANNOTATION_HEADER.size:
+                        break  # Not enough data left for a full header
+                    header = DataFormat.ANNOTATION_HEADER.unpack_from(annotations_data, offset)
+                    offset += DataFormat.ANNOTATION_HEADER.size
+                    num_annotations = header[1]
+                    for _ in range(num_annotations):
+                        if len(annotations_data) - offset < DataFormat.ANNOTATION_ITEM.size:
+                            break  # Not enough data left for an annotation item
+                        annotation = DataFormat.ANNOTATION_ITEM.unpack_from(annotations_data, offset)
+                        offset += DataFormat.ANNOTATION_ITEM.size
+                return True  # Add more checks as needed
+
+    def validate(self):
+        return self.validate_zip_structure() and self.validate_metadata() and self.validate_annotations()
