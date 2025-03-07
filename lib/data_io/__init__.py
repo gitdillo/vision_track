@@ -1,4 +1,4 @@
-# data_io/__init__.py
+# lib/data_io/__init__.py
 """
 Input/Output handling components
 """
