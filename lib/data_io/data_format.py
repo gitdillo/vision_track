@@ -84,6 +84,26 @@ class DatasetValidator:
                         annotation = DataFormat.ANNOTATION_ITEM.unpack_from(annotations_data, offset)
                         offset += DataFormat.ANNOTATION_ITEM.size
                 return True  # Add more checks as needed
+    
+    def validate_annotations(self):
+        with zipfile.ZipFile(self.dataset_path, 'r') as zip_ref:
+            with zip_ref.open(DataFormat.ANNOTATIONS_BIN) as f:
+                annotations_data = f.read()  # Read the entire file
+                offset = 0
+                while offset < len(annotations_data):
+                    # Read header
+                    if len(annotations_data) - offset < DataFormat.ANNOTATION_HEADER.size:
+                        break  # Not enough data left for a full header
+                    header = DataFormat.ANNOTATION_HEADER.unpack_from(annotations_data, offset)
+                    offset += DataFormat.ANNOTATION_HEADER.size
+                    num_annotations = header[1]
+                    for _ in range(num_annotations):
+                        if len(annotations_data) - offset < DataFormat.ANNOTATION_ITEM.size:
+                            break  # Not enough data left for an annotation item
+                        annotation = DataFormat.ANNOTATION_ITEM.unpack_from(annotations_data, offset)
+                        offset += DataFormat.ANNOTATION_ITEM.size
+                return True  # Add more checks as needed
+
 
     def validate(self):
         return self.validate_zip_structure() and self.validate_metadata() and self.validate_annotations()
