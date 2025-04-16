@@ -119,34 +119,45 @@ class InputHandler:
 
 
 class OutputHandler:
-    def __init__(self, output_path, fps, frame_size):
+    def __init__(self, output_path):
         self.output_path = output_path
-        self.fps = fps
-        self.frame_size = frame_size
-        self.frame_count = 0
-        self.roi_frame = None
-        self.roi_info = None
-
-        # Temporary files
-        self.temp_files = {
-            DataFormat.RAW_VIDEO: f"{output_path}_temp_{DataFormat.RAW_VIDEO}",
-            DataFormat.ANNOTATED_VIDEO: f"{output_path}_temp_{DataFormat.ANNOTATED_VIDEO}",
-            DataFormat.ANNOTATIONS_BIN: f"{output_path}_temp_{DataFormat.ANNOTATIONS_BIN}",
-            DataFormat.METADATA_JSON: f"{output_path}_temp_{DataFormat.METADATA_JSON}",
-            DataFormat.ROI_FRAME: f"{output_path}_temp_{DataFormat.ROI_FRAME}",
-        }
-
-        # Initialize video writers
-        fourcc = cv2.VideoWriter_fourcc(*DataFormat.VIDEO_CODEC)
-        self.raw_writer = cv2.VideoWriter(
-            self.temp_files[DataFormat.RAW_VIDEO], fourcc, fps, frame_size
-        )
-        self.annotated_writer = cv2.VideoWriter(
-            self.temp_files[DataFormat.ANNOTATED_VIDEO], fourcc, fps, frame_size
+        self.raw_video_writer = None
+        self.annotated_video_writer = None
+        self._current_zip = None
+        self.annotations = []
+        self.metadata = None
+    
+    def initialize_video_writers(self, frame_size, fps):
+        # Initialize raw video writer (no annotations)
+        self.raw_video_writer = cv2.VideoWriter(
+            DataFormat.RAW_VIDEO,
+            cv2.VideoWriter_fourcc(*DataFormat.VIDEO_CODEC),
+            fps,
+            frame_size
         )
 
-        # Open annotation file
-        self.annotation_file = open(self.temp_files[DataFormat.ANNOTATIONS_BIN], "wb")
+        # Initialize annotated video writer
+        self.annotated_video_writer = cv2.VideoWriter(
+            DataFormat.ANNOTATED_VIDEO,
+            cv2.VideoWriter_fourcc(*DataFormat.VIDEO_CODEC),
+            fps,
+            frame_size
+        )
+    
+    def write_raw_frame(self, frame):
+        if self.raw_video_writer:
+            self.raw_video_writer.write(frame)
+    
+    def write_annotated_frame(self, frame):
+        if self.annotated_video_writer:
+            self.annotated_video_writer.write(frame)
+    
+    def release(self):
+        if self.raw_video_writer:
+            self.raw_video_writer.release()
+        if self.annotated_video_writer:
+            self.annotated_video_writer.release()
+        # ... (rest of release logic for zip file)
 
     def write_frame(self, frame, annotations):
         # Write raw frame

@@ -3,11 +3,10 @@ import json
 import cv2
 import logging
 import io
+import sys
 from datetime import datetime
-from data_io.handlers import InputHandler, OutputHandler
-# from data_io.data_format import DataFormat
-from trackers import get_tracker
-
+from vision_track.lib.data_io.handlers import InputHandler, OutputHandler
+from vision_track.lib.trackers import get_tracker
 
 class StringIOHandler(logging.Handler):
     def __init__(self):
@@ -43,11 +42,11 @@ def parse_arguments():
     parser.add_argument(
         "-o",
         "--output",
-        nargs="?",
-        const="",
-        help="Output file name (use '-' to disable saving, omit for default datetime name)",
+        required=True,
+        help="Output path (use '-' for stdout, .zip extension will be added if missing)"
     )
     return parser.parse_args()
+
 
 
 def load_config(config_path):
@@ -56,40 +55,58 @@ def load_config(config_path):
 
 
 def process_live_camera(config, output_handler):
+    if output_handler is None:
+        raise ValueError("Output handler required for camera processing")
     input_source = config.get("input_source", 0)
     input_handler = InputHandler(input_source)
     input_handler.warm_up(2)
 
+    # Get initial frame for ROI selection
     frame, _ = input_handler.fetch_frame()
+    if frame is None:
+        logging.error("Failed to capture initial frame")
+        return
 
+    # Initialize video writers with actual frame parameters
+    frame_size = (frame.shape[1], frame.shape[0])
+    fps = input_handler.cap.get(cv2.CAP_PROP_FPS)
+    output_handler.initialize_video_writers(frame_size, fps)
+
+    # Tracker initialization
     tracker_name = config.get("tracking_algorithm", "CSRTTracker")
     TrackerClass = get_tracker(tracker_name)
     tracker = TrackerClass()
-
     logging.info(f"Using tracker: {tracker_name}")
 
+    # ROI selection and initialization
     bbox = tracker.select_ROI(frame)
-
-    if output_handler:
-        output_handler.set_roi(frame, bbox)
+    output_handler.set_roi(frame, bbox)  # Save ROI frame
 
     if tracker.initialize(frame, [bbox]):
         logging.info("Tracking initialized. Starting main loop...")
-
         try:
+            frame_count = 0
             while True:
-                frame, ret = input_handler.fetch_frame()
+                # Capture raw frame
+                raw_frame, ret = input_handler.fetch_frame()
                 if not ret:
                     logging.info("End of video feed or error fetching frame.")
                     break
 
-                tracked = tracker.update(frame)
+                # Save raw frame BEFORE processing
+                output_handler.write_raw_frame(raw_frame.copy())
 
+                # Process frame
+                annotated_frame = raw_frame.copy()
+                tracked = tracker.update(annotated_frame)
+                annotations = []
+
+                # Draw annotations on the annotated frame
                 for obj_id, bbox in tracked.items():
                     x, y, w, h = map(int, bbox)
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.rectangle(annotated_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                     cv2.putText(
-                        frame,
+                        annotated_frame,
                         f"ID: {obj_id}",
                         (x, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX,
@@ -97,22 +114,29 @@ def process_live_camera(config, output_handler):
                         (0, 255, 0),
                         1,
                     )
+                    annotations.append({"bbox": bbox, "confidence": 1.0})
 
-                cv2.imshow("Tracking", frame)
+                # Save annotated frame and annotations
+                output_handler.write_annotated_frame(annotated_frame)
+                output_handler.add_annotation(frame_count, annotations)
+
+                # Display results
+                cv2.imshow("Tracking", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
-                if output_handler:
-                    output_handler.write_frame(
-                        frame,
-                        [
-                            {"bbox": bbox, "confidence": 1.0}
-                            for bbox in tracked.values()
-                        ],
-                    )
+                frame_count += 1
 
         finally:
+            # Save metadata and clean up
+            output_handler.metadata = {
+                "frame_count": frame_count,
+                "fps": fps,
+                "frame_size": frame_size,
+                "tracking_algorithm": tracker_name
+            }
             input_handler.release()
+            output_handler.release()
             cv2.destroyAllWindows()
     else:
         logging.error("Failed to initialize tracker. Exiting.")
@@ -127,34 +151,46 @@ def main():
     logging.info(json.dumps(config, indent=2))
 
     output_handler = None
-    if args.output != "-":
-        if args.output:
-            output_file = (
-                f"{args.output}.zip"
-                if not args.output.endswith(".zip")
-                else args.output
-            )
+    input_source = config.get("input_source", 0)
+    
+    try:
+        # Initialize input handler to get actual video parameters
+        input_handler = InputHandler(input_source)
+        input_handler.warm_up(2)
+        frame, _ = input_handler.fetch_frame()
+        if frame is None:
+            raise ValueError("Failed to capture initial frame from input source")
+        
+        # Get dynamic parameters from actual input
+        fps = input_handler.cap.get(cv2.CAP_PROP_FPS)
+        frame_size = (frame.shape[1], frame.shape[0])
+        input_handler.release()
+
+        if args.output != "-":
+            # Initialize output handler with dynamic parameters
+            output_file = (f"{args.output}.zip" if not args.output.endswith(".zip") 
+                          else args.output) if args.output else \
+                         f"{datetime.now().strftime('%Y%m%d-%H_%M_%S')}.zip"
+            
+            output_handler = OutputHandler(output_file)
+            output_handler.initialize_video_writers(frame_size, fps)
+
+        if isinstance(input_source, str) and input_source.endswith(".zip"):
+            logging.info("Saved data processing not implemented yet")
         else:
-            output_file = f"{datetime.now().strftime('%Y%m%d-%H_%M_%S')}.zip"
+            process_live_camera(config, output_handler)
 
-        fps = 30  # Default FPS, you might want to get this from the input source
-        frame_size = (
-            640,
-            480,
-        )  # Default frame size, you might want to get this from the input source
-        output_handler = OutputHandler(output_file, fps, frame_size)
+    except Exception as e:
+        logging.error(f"Critical error: {str(e)}", exc_info=True)
+        raise
 
-    if isinstance(config.get("input_source", 0), str) and config[
-        "input_source"
-    ].endswith(".zip"):
-        logging.info("Saved data processing not implemented yet")
-    else:
-        process_live_camera(config, output_handler)
+    finally:
+        # Cleanup resources
+        if output_handler:
+            output_handler.add_file("console.log", log_handler.get_contents())
+            output_handler.finalize()
+            logging.info(f"Output saved to {output_handler.output_path}")
 
-    if output_handler:
-        output_handler.add_file("console.log", log_handler.get_contents())
-        output_handler.finalize()
-        logging.info(f"Output saved to {output_handler.output_path}")
 
 
 if __name__ == "__main__":
